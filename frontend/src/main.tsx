@@ -1,7 +1,12 @@
-import { Auth0Provider } from '@auth0/auth0-react'
+/**
+ * Application entry point.
+ */
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import { Auth0Provider } from '@auth0/auth0-react'
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+
 import './index.css'
 import App from './App.tsx'
 import { TimebackSignIn } from './pages/TimebackSignIn.tsx'
@@ -13,7 +18,6 @@ const auth0Audience = import.meta.env.VITE_AUTH0_AUDIENCE
 
 /**
  * Auth0 provider wrapper that integrates with React Router.
- * Handles redirect after login using appState.returnTo
  */
 function Auth0ProviderWithNavigate({ children }: { children: React.ReactNode }) {
 	const navigate = useNavigate()
@@ -27,7 +31,14 @@ function Auth0ProviderWithNavigate({ children }: { children: React.ReactNode }) 
 				audience: auth0Audience,
 			}}
 			onRedirectCallback={appState => {
-				navigate(appState?.returnTo || '/', { replace: true })
+				const returnTo = (appState as { returnTo?: string; launch?: string } | undefined)?.returnTo
+				const launch = (appState as { returnTo?: string; launch?: string } | undefined)?.launch
+
+				if (launch === 'timeback') {
+					sessionStorage.setItem('timeback_launch', '1')
+				}
+
+				navigate(returnTo || '/', { replace: true })
 			}}
 		>
 			{children}

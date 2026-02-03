@@ -1,126 +1,39 @@
+/**
+ * Main App component.
+ */
+
 import { useAuth0 } from '@auth0/auth0-react'
-import { useTimebackProfile, useTimebackVerification } from '@timeback/sdk/react'
-import { useState } from 'react'
-import { api } from './api'
+import { useNavigate } from 'react-router-dom'
 
-interface UserResponse {
-	id: number
-	email: string | null
-	name: string | null
-	auth0_sub: string
-	created_at: string
-}
+import { AuthenticatedView } from './components/AuthenticatedView'
+import { UnauthenticatedView } from './components/UnauthenticatedView'
 
-function App() {
-	const { isAuthenticated, isLoading, user, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0()
-	const [apiResponse, setApiResponse] = useState<UserResponse | null>(null)
-	const [apiLoading, setApiLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-
-	// Timeback hooks - only enabled when authenticated
-	const { state: verificationState } = useTimebackVerification({ enabled: isAuthenticated })
-	const { state: profileState, fetchProfile } = useTimebackProfile({ enabled: isAuthenticated })
-
-	const callProtectedApi = async () => {
-		setApiLoading(true)
-		setError(null)
-		try {
-			const token = await getAccessTokenSilently()
-			const data = await api.get<UserResponse>('/api/users/me', token)
-			setApiResponse(data)
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'An error occurred')
-		} finally {
-			setApiLoading(false)
-		}
-	}
+export function App() {
+	const { isLoading, isAuthenticated, loginWithRedirect, logout } = useAuth0()
+	const navigate = useNavigate()
 
 	if (isLoading) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<p className="text-lg">Loading...</p>
+			<div className="flex min-h-screen items-center justify-center bg-zinc-50">
+				<div className="text-zinc-400">Loading...</div>
 			</div>
 		)
 	}
 
 	return (
-		<div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
-			<h1 className="text-3xl font-bold">Bunledge</h1>
-
-			{!isAuthenticated ? (
-				<button
-					onClick={() => loginWithRedirect()}
-					className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-				>
-					Log In
-				</button>
-			) : (
-				<>
-					<div className="text-center">
-						<p className="text-lg">Welcome, {user?.name || user?.email}!</p>
-						<p className="text-sm text-gray-600">{user?.email}</p>
-					</div>
-
-					{/* Timeback Verification Status */}
-					<div className="flex items-center gap-2 text-sm">
-						<span className="text-gray-600">Timeback:</span>
-						{verificationState.status === 'loading' && <span className="text-yellow-600">Checking...</span>}
-						{verificationState.status === 'verified' && <span className="text-green-600">Verified</span>}
-						{verificationState.status === 'unverified' && (
-							<span className="text-orange-600">Not in Timeback</span>
-						)}
-						{verificationState.status === 'error' && (
-							<span className="text-red-600">Error: {verificationState.message}</span>
-						)}
-					</div>
-
-					<div className="flex flex-wrap gap-4 justify-center">
-						<button
-							onClick={callProtectedApi}
-							disabled={apiLoading}
-							className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-						>
-							{apiLoading ? 'Loading...' : 'Get My Profile (API)'}
-						</button>
-						<button
-							onClick={fetchProfile}
-							disabled={verificationState.status !== 'verified' || profileState.status === 'loading'}
-							className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
-						>
-							{profileState.status === 'loading' ? 'Loading...' : 'Get Timeback Profile'}
-						</button>
-						<button
-							onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-							className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-						>
-							Log Out
-						</button>
-					</div>
-
-					{error && <p className="text-red-500">Error: {error}</p>}
-					{profileState.status === 'error' && (
-						<p className="text-red-500">Timeback Error: {profileState.message}</p>
-					)}
-
-					<div className="flex flex-wrap gap-4 justify-center">
-						{apiResponse && (
-							<div className="p-4 bg-gray-100 rounded max-w-md">
-								<h3 className="font-semibold mb-2">Local DB User:</h3>
-								<pre className="text-sm overflow-auto">{JSON.stringify(apiResponse, null, 2)}</pre>
-							</div>
-						)}
-
-						{profileState.status === 'loaded' && (
-							<div className="p-4 bg-purple-100 rounded max-w-md">
-								<h3 className="font-semibold mb-2">Timeback Profile:</h3>
-								<pre className="text-sm overflow-auto">
-									{JSON.stringify(profileState.profile, null, 2)}
-								</pre>
-							</div>
-						)}
-					</div>
-				</>
-			)}
+		<div className="flex min-h-screen flex-col items-center justify-center bg-[#fafafa] p-8 text-zinc-900">
+			<main className="w-full max-w-lg rounded-[2.5rem] bg-white px-12 py-14 shadow-[0_24px_60px_rgba(0,0,0,0.04)] border border-zinc-100/80">
+				{isAuthenticated ? (
+					<AuthenticatedView
+						onLogout={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+					/>
+				) : (
+					<UnauthenticatedView
+						onLogin={() => loginWithRedirect()}
+						onTimebackLaunch={() => navigate('/timeback/signin')}
+					/>
+				)}
+			</main>
 		</div>
 	)
 }
