@@ -171,7 +171,9 @@ export function ActivityForm(props: ActivityFormProps) {
 						/>
 					</div>
 					<div className="space-y-1.5">
-						<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Total</label>
+						<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+							Total
+						</label>
 						<input
 							type="number"
 							value={metrics.totalQuestions}
@@ -182,7 +184,9 @@ export function ActivityForm(props: ActivityFormProps) {
 						/>
 					</div>
 					<div className="space-y-1.5">
-						<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Units</label>
+						<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+							Units
+						</label>
 						<input
 							type="number"
 							value={metrics.masteredUnits}

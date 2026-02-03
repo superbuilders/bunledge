@@ -3,7 +3,13 @@
  */
 
 import type { TimebackVerificationState } from '@timeback/sdk/react'
-import { ActivityForm, type ActivityConfig, type ActivityMetrics, type ActivityState, type CourseInfo } from './ActivityForm'
+import {
+	ActivityForm,
+	type ActivityConfig,
+	type ActivityMetrics,
+	type ActivityState,
+	type CourseInfo,
+} from './ActivityForm'
 import { Spinner } from './ui/Spinner'
 
 export interface ActivityGateProps {
