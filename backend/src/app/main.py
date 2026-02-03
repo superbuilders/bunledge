@@ -4,8 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
-from .models import Assessment, Exercise, User  # noqa: F401
-from .routes import assessments_router, exercises_router, users_router
+from .routes import users_router
 from .timeback import create_timeback_router
 
 
@@ -23,8 +22,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Bunledge API", lifespan=lifespan)
 
 app.include_router(users_router)
-app.include_router(exercises_router)
-app.include_router(assessments_router)
 
 app.add_middleware(
     CORSMiddleware,
