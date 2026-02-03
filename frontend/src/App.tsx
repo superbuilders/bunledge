@@ -1,4 +1,5 @@
 import { useAuth0 } from '@auth0/auth0-react'
+import { useTimebackProfile, useTimebackVerification } from '@timeback/sdk/react'
 import { useState } from 'react'
 import { api } from './api'
 
@@ -15,8 +16,10 @@ function App() {
 	const [apiResponse, setApiResponse] = useState<UserResponse | null>(null)
 	const [apiLoading, setApiLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const [timebackResponse, setTimebackResponse] = useState<Record<string, unknown> | null>(null)
-	const [timebackLoading, setTimebackLoading] = useState(false)
+
+	// Timeback hooks - only enabled when authenticated
+	const { state: verificationState } = useTimebackVerification({ enabled: isAuthenticated })
+	const { state: profileState, fetchProfile } = useTimebackProfile({ enabled: isAuthenticated })
 
 	const callProtectedApi = async () => {
 		setApiLoading(true)
@@ -29,20 +32,6 @@ function App() {
 			setError(err instanceof Error ? err.message : 'An error occurred')
 		} finally {
 			setApiLoading(false)
-		}
-	}
-
-	const callTimebackApi = async () => {
-		setTimebackLoading(true)
-		setError(null)
-		try {
-			const token = await getAccessTokenSilently()
-			const data = await api.get<Record<string, unknown>>('/api/timeback/user/me', token)
-			setTimebackResponse(data)
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'An error occurred')
-		} finally {
-			setTimebackLoading(false)
 		}
 	}
 
@@ -72,6 +61,19 @@ function App() {
 						<p className="text-sm text-gray-600">{user?.email}</p>
 					</div>
 
+					{/* Timeback Verification Status */}
+					<div className="flex items-center gap-2 text-sm">
+						<span className="text-gray-600">Timeback:</span>
+						{verificationState.status === 'loading' && <span className="text-yellow-600">Checking...</span>}
+						{verificationState.status === 'verified' && <span className="text-green-600">Verified</span>}
+						{verificationState.status === 'unverified' && (
+							<span className="text-orange-600">Not in Timeback</span>
+						)}
+						{verificationState.status === 'error' && (
+							<span className="text-red-600">Error: {verificationState.message}</span>
+						)}
+					</div>
+
 					<div className="flex flex-wrap gap-4 justify-center">
 						<button
 							onClick={callProtectedApi}
@@ -81,11 +83,11 @@ function App() {
 							{apiLoading ? 'Loading...' : 'Get My Profile (API)'}
 						</button>
 						<button
-							onClick={callTimebackApi}
-							disabled={timebackLoading}
+							onClick={fetchProfile}
+							disabled={verificationState.status !== 'verified' || profileState.status === 'loading'}
 							className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
 						>
-							{timebackLoading ? 'Loading...' : 'Test Timeback'}
+							{profileState.status === 'loading' ? 'Loading...' : 'Get Timeback Profile'}
 						</button>
 						<button
 							onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
@@ -96,6 +98,9 @@ function App() {
 					</div>
 
 					{error && <p className="text-red-500">Error: {error}</p>}
+					{profileState.status === 'error' && (
+						<p className="text-red-500">Timeback Error: {profileState.message}</p>
+					)}
 
 					<div className="flex flex-wrap gap-4 justify-center">
 						{apiResponse && (
@@ -105,10 +110,12 @@ function App() {
 							</div>
 						)}
 
-						{timebackResponse && (
+						{profileState.status === 'loaded' && (
 							<div className="p-4 bg-purple-100 rounded max-w-md">
-								<h3 className="font-semibold mb-2">Timeback User:</h3>
-								<pre className="text-sm overflow-auto">{JSON.stringify(timebackResponse, null, 2)}</pre>
+								<h3 className="font-semibold mb-2">Timeback Profile:</h3>
+								<pre className="text-sm overflow-auto">
+									{JSON.stringify(profileState.profile, null, 2)}
+								</pre>
 							</div>
 						)}
 					</div>

@@ -1,7 +1,7 @@
 {
   "$schema": "https://timeback.dev/schema.json",
   "name": "Bunledge v0",
-  "launchUrl": "https://localhost:8080",
+  "launchUrl": "http://localhost:8080/timeback/signin",
   "courses": [
     {
       "subject": "Math",
