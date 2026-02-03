@@ -12,8 +12,8 @@ export interface User {
 }
 
 export interface AuthenticatedHeaderProps {
-	edgeUser?: User
-	edgeError?: string
+	user?: User
+	userError?: string
 	launchedFromTimeback: boolean
 	timebackVerification: TimebackVerificationState
 	onOpenProfile: () => void
@@ -21,8 +21,8 @@ export interface AuthenticatedHeaderProps {
 }
 
 export function AuthenticatedHeader({
-	edgeUser,
-	edgeError,
+	user,
+	userError,
 	launchedFromTimeback,
 	timebackVerification,
 	onOpenProfile,
@@ -48,8 +48,8 @@ export function AuthenticatedHeader({
 				</div>
 			</div>
 			<div className="flex items-center gap-2">
-				{edgeUser ? (
-					<p className="text-zinc-400 text-lg">{edgeUser.name ?? edgeUser.email ?? `User #${edgeUser.id}`}</p>
+				{user ? (
+					<p className="text-zinc-400 text-lg">{user.name ?? user.email ?? `User #${user.id}`}</p>
 				) : (
 					<Spinner color="text-zinc-300" />
 				)}
@@ -72,7 +72,7 @@ export function AuthenticatedHeader({
 					</span>
 				)}
 			</div>
-			{edgeError && <p className="text-sm text-red-500">{edgeError}</p>}
+			{userError && <p className="text-sm text-red-500">{userError}</p>}
 			{timebackVerification.status === 'error' && (
 				<p className="text-sm text-red-500">{timebackVerification.message}</p>
 			)}

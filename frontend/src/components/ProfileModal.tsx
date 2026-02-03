@@ -11,7 +11,7 @@ export interface ProfileModalProps {
 	open: boolean
 	onClose: () => void
 	timebackVerification: TimebackVerificationState
-	edgeUser?: User
+	user?: User
 	profile?: TimebackProfile
 	profileLoading: boolean
 	profileError?: string
@@ -23,7 +23,7 @@ export function ProfileModal({
 	open,
 	onClose,
 	timebackVerification,
-	edgeUser,
+	user,
 	profile,
 	profileLoading,
 	profileError,
@@ -45,7 +45,7 @@ export function ProfileModal({
 				<div className="space-y-4">
 					<div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">/api/users/me</div>
 					<pre className="text-sm bg-zinc-900 text-zinc-100 p-5 rounded-2xl overflow-auto max-h-60 font-mono">
-						{JSON.stringify(edgeUser, null, 2)}
+						{JSON.stringify(user, null, 2)}
 					</pre>
 				</div>
 

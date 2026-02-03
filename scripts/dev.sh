@@ -10,6 +10,11 @@ docker compose up -d
 echo "Waiting for PostgreSQL to be ready..."
 sleep 2
 
+echo "Initializing database..."
+cd backend
+uv run python -m scripts.init_db
+cd ..
+
 echo "Starting backend..."
 cd backend
 uv run uvicorn src.app.main:app --reload --port 8000 &

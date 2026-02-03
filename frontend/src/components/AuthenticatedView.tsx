@@ -22,8 +22,8 @@ export interface AuthenticatedViewProps {
 }
 
 export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
-	const [edgeUser, setEdgeUser] = useState<User | undefined>(undefined)
-	const [edgeError, setEdgeError] = useState<string | undefined>(undefined)
+	const [user, setUser] = useState<User | undefined>(undefined)
+	const [userError, setUserError] = useState<string | undefined>(undefined)
 
 	const { getAccessTokenSilently } = useAuth0()
 
@@ -37,6 +37,33 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 	const profile = profileState.status === 'loaded' ? profileState.profile : undefined
 	const profileLoading = profileState.status === 'loading'
 	const profileError = profileState.status === 'error' ? profileState.message : undefined
+
+	useEffect(() => {
+		let cancelled = false
+
+		void (async () => {
+			try {
+				const token = await getAccessTokenSilently()
+				if (cancelled) return
+
+				const res = await fetch('/api/users/me', {
+					headers: { Authorization: `Bearer ${token}` },
+				})
+				if (!res.ok) throw new Error(`/api/users/me failed (${res.status})`)
+
+				const u = (await res.json()) as User
+				if (!cancelled) setUser(u)
+			} catch (err) {
+				if (!cancelled) {
+					setUserError(err instanceof Error ? err.message : 'Failed to fetch user')
+				}
+			}
+		})()
+
+		return () => {
+			cancelled = true
+		}
+	}, [getAccessTokenSilently])
 
 	const [activity, setActivity] = useState<Activity | undefined>(undefined)
 	const [activityState, setActivityState] = useState<ActivityState>('idle')
@@ -53,34 +80,6 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		masteredUnits: 0,
 		xpEarned: '',
 	})
-
-	// Fetch edge user
-	useEffect(() => {
-		let cancelled = false
-
-		void (async () => {
-			try {
-				const token = await getAccessTokenSilently()
-				if (cancelled) return
-
-				const res = await fetch('/api/users/me', {
-					headers: { Authorization: `Bearer ${token}` },
-				})
-				if (!res.ok) throw new Error(`/api/users/me failed (${res.status})`)
-
-				const u = (await res.json()) as User
-				if (!cancelled) setEdgeUser(u)
-			} catch (err) {
-				if (!cancelled) {
-					setEdgeError(err instanceof Error ? err.message : 'Failed to fetch user')
-				}
-			}
-		})()
-
-		return () => {
-			cancelled = true
-		}
-	}, [getAccessTokenSilently])
 
 	useEffect(() => {
 		if (!activity) return
@@ -160,8 +159,8 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 	return (
 		<div className="space-y-8">
 			<AuthenticatedHeader
-				edgeUser={edgeUser}
-				edgeError={edgeError}
+				user={user}
+				userError={userError}
 				launchedFromTimeback={launchedFromTimeback}
 				timebackVerification={timebackVerification}
 				onOpenProfile={() => setIsUserModalOpen(true)}
@@ -172,7 +171,7 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 				open={isUserModalOpen}
 				onClose={() => setIsUserModalOpen(false)}
 				timebackVerification={timebackVerification}
-				edgeUser={edgeUser}
+				user={user}
 				profile={profile}
 				profileLoading={profileLoading}
 				profileError={profileError}

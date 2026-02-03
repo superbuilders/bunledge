@@ -6,15 +6,26 @@ set -e
 
 METHOD=${1:-tables}
 
+# Ensure PostgreSQL is running
+ensure_postgres() {
+  if ! docker ps --format '{{.Names}}' | grep -q bunledge-postgres; then
+    echo "Starting PostgreSQL..."
+    docker compose up -d
+    sleep 2
+  fi
+}
+
 case $METHOD in
   tables)
+    ensure_postgres
     echo "Dropping all tables..."
     docker exec bunledge-postgres psql -U bunledge -d bunledge -c "
-      DROP TABLE IF EXISTS assessment CASCADE;
       DROP TABLE IF EXISTS \"user\" CASCADE;
-      DROP TABLE IF EXISTS exercise CASCADE;
     "
-    echo "Tables dropped. Restart backend to recreate them."
+    echo "Recreating tables..."
+    cd backend
+    uv run python -m scripts.init_db
+    cd ..
     ;;
   volume)
     echo "Removing container and volume..."
@@ -23,7 +34,10 @@ case $METHOD in
     docker compose up -d
     echo "Waiting for PostgreSQL to be ready..."
     sleep 3
-    echo "Done. Restart backend to create tables."
+    echo "Recreating tables..."
+    cd backend
+    uv run python -m scripts.init_db
+    cd ..
     ;;
   *)
     echo "Usage: $0 [tables|volume]"

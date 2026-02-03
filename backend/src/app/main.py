@@ -3,16 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .db import init_db
 from .routes import users_router
 from .timeback import create_timeback_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database and Timeback on startup."""
-    await init_db()
-
+    """Initialize Timeback on startup."""
     timeback_router = await create_timeback_router()
     app.include_router(timeback_router, prefix="/api/timeback")
 
