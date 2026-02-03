@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://bunledge:bunledge@localhost:5433/bunledge"
 
+    # Timeback
+    timeback_env: str = "staging"
+    timeback_api_client_id: str = ""
+    timeback_api_client_secret: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

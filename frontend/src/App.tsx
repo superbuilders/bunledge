@@ -15,6 +15,8 @@ function App() {
 	const [apiResponse, setApiResponse] = useState<UserResponse | null>(null)
 	const [apiLoading, setApiLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [timebackResponse, setTimebackResponse] = useState<Record<string, unknown> | null>(null)
+	const [timebackLoading, setTimebackLoading] = useState(false)
 
 	const callProtectedApi = async () => {
 		setApiLoading(true)
@@ -27,6 +29,20 @@ function App() {
 			setError(err instanceof Error ? err.message : 'An error occurred')
 		} finally {
 			setApiLoading(false)
+		}
+	}
+
+	const callTimebackApi = async () => {
+		setTimebackLoading(true)
+		setError(null)
+		try {
+			const token = await getAccessTokenSilently()
+			const data = await api.get<Record<string, unknown>>('/api/timeback/user/me', token)
+			setTimebackResponse(data)
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'An error occurred')
+		} finally {
+			setTimebackLoading(false)
 		}
 	}
 
@@ -56,13 +72,20 @@ function App() {
 						<p className="text-sm text-gray-600">{user?.email}</p>
 					</div>
 
-					<div className="flex gap-4">
+					<div className="flex flex-wrap gap-4 justify-center">
 						<button
 							onClick={callProtectedApi}
 							disabled={apiLoading}
 							className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
 						>
 							{apiLoading ? 'Loading...' : 'Get My Profile (API)'}
+						</button>
+						<button
+							onClick={callTimebackApi}
+							disabled={timebackLoading}
+							className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+						>
+							{timebackLoading ? 'Loading...' : 'Test Timeback'}
 						</button>
 						<button
 							onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
@@ -74,12 +97,21 @@ function App() {
 
 					{error && <p className="text-red-500">Error: {error}</p>}
 
-					{apiResponse && (
-						<div className="p-4 bg-gray-100 rounded max-w-md">
-							<h3 className="font-semibold mb-2">API Response (from database):</h3>
-							<pre className="text-sm overflow-auto">{JSON.stringify(apiResponse, null, 2)}</pre>
-						</div>
-					)}
+					<div className="flex flex-wrap gap-4 justify-center">
+						{apiResponse && (
+							<div className="p-4 bg-gray-100 rounded max-w-md">
+								<h3 className="font-semibold mb-2">Local DB User:</h3>
+								<pre className="text-sm overflow-auto">{JSON.stringify(apiResponse, null, 2)}</pre>
+							</div>
+						)}
+
+						{timebackResponse && (
+							<div className="p-4 bg-purple-100 rounded max-w-md">
+								<h3 className="font-semibold mb-2">Timeback User:</h3>
+								<pre className="text-sm overflow-auto">{JSON.stringify(timebackResponse, null, 2)}</pre>
+							</div>
+						)}
+					</div>
 				</>
 			)}
 		</div>

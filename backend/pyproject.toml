@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "pyjwt>=2.11.0",
     "sqlmodel>=0.0.32",
+    "timeback-sdk[fastapi]>=0.1.4",
     "uvicorn>=0.40.0",
 ]
 
