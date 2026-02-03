@@ -66,6 +66,7 @@ async def create_timeback_router():
     timeback = await create_server(
         TimebackConfig(
             env=settings.timeback_env,  # type: ignore[arg-type]
+            config_path="../timeback.config.json",
             api=ApiCredentials(
                 client_id=settings.timeback_api_client_id,
                 client_secret=settings.timeback_api_client_secret,
