@@ -6,26 +6,64 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 import { type Activity, useTimeback, useTimebackVerification, useTimebackProfile } from '@timeback/sdk/react'
 
-import { ActivityGate } from './ActivityGate'
-import { AuthenticatedHeader, type User } from './AuthenticatedHeader'
+import { AuthenticatedHeader } from './AuthenticatedHeader'
 import { ProfileModal } from './ProfileModal'
+import { EndActivityModal } from './EndActivityModal'
+import { QuestionAnswerer } from './QuestionAnswerer'
+import { TimebackGate } from './TimebackGate'
 import { useTimebackLaunchFlag } from '../hooks/useTimebackLaunchFlag'
-import type { ActivityConfig, ActivityMetrics, ActivityState, CourseInfo } from './ActivityForm'
+import { useCurrentUser } from '../hooks/useCurrentUser'
+import { useActivityResume } from '../hooks/useActivityResume'
+import {
+	activityApi,
+	type Activity as BackendActivity,
+	type ActivityProgress,
+	type ActivityProgressUpdate,
+} from '../lib/api'
+
+export type ActivityState = 'idle' | 'active' | 'paused' | 'submitting' | 'submitted'
+
+export interface ActivityConfig {
+	activityId: string
+	activityName: string
+}
+
+export interface CourseInfo {
+	code: string
+}
+
+export interface ActivityMetrics {
+	correctQuestions: number
+	totalQuestions: number
+	masteredUnits: number
+	xpEarned: number | ''
+}
 
 /**
  * Course info from timeback.config.json.
  */
 const COURSE: CourseInfo = { code: 'BUNLEDGE-V0-MATH' }
 
+function backendStatusToFrontend(status: ActivityProgress['status']): ActivityState {
+	switch (status) {
+		case 'not_started':
+			return 'idle'
+		case 'in_progress':
+			return 'active'
+		case 'paused':
+			return 'paused'
+		case 'completed':
+			return 'submitted'
+	}
+}
+
 export interface AuthenticatedViewProps {
 	onLogout: () => void
 }
 
 export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
-	const [user, setUser] = useState<User | undefined>(undefined)
-	const [userError, setUserError] = useState<string | undefined>(undefined)
-
 	const { getAccessTokenSilently } = useAuth0()
+	const { user, userError } = useCurrentUser(getAccessTokenSilently)
 
 	const [isUserModalOpen, setIsUserModalOpen] = useState(false)
 
@@ -38,33 +76,8 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 	const profileLoading = profileState.status === 'loading'
 	const profileError = profileState.status === 'error' ? profileState.message : undefined
 
-	useEffect(() => {
-		let cancelled = false
-
-		void (async () => {
-			try {
-				const token = await getAccessTokenSilently()
-				if (cancelled) return
-
-				const res = await fetch('/api/users/me', {
-					headers: { Authorization: `Bearer ${token}` },
-				})
-				if (!res.ok) throw new Error(`/api/users/me failed (${res.status})`)
-
-				const u = (await res.json()) as User
-				if (!cancelled) setUser(u)
-			} catch (err) {
-				if (!cancelled) {
-					setUserError(err instanceof Error ? err.message : 'Failed to fetch user')
-				}
-			}
-		})()
-
-		return () => {
-			cancelled = true
-		}
-	}, [getAccessTokenSilently])
-
+	const [backendActivity, setBackendActivity] = useState<BackendActivity | undefined>(undefined)
+	const [backendProgress, setBackendProgress] = useState<ActivityProgress | undefined>(undefined)
 	const [activity, setActivity] = useState<Activity | undefined>(undefined)
 	const [activityState, setActivityState] = useState<ActivityState>('idle')
 	const [elapsedMs, setElapsedMs] = useState(0)
@@ -75,10 +88,23 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 	})
 
 	const [metrics, setMetrics] = useState<ActivityMetrics>({
-		correctQuestions: 8,
-		totalQuestions: 10,
+		correctQuestions: 0,
+		totalQuestions: 0,
 		masteredUnits: 0,
 		xpEarned: '',
+	})
+
+	const [isEndModalOpen, setIsEndModalOpen] = useState(false)
+
+	useActivityResume({
+		getAccessTokenSilently,
+		setBackendActivity,
+		setBackendProgress,
+		setConfig,
+		setMetrics,
+		setElapsedMs,
+		setActivityState,
+		backendStatusToFrontend,
 	})
 
 	useEffect(() => {
@@ -92,18 +118,26 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		return () => clearInterval(interval)
 	}, [activity, activityState])
 
-	const handleConfigChange = useCallback((partial: Partial<ActivityConfig>) => {
-		setConfig(prev => ({ ...prev, ...partial }))
-	}, [])
+	const saveProgressToBackend = useCallback(
+		async (update: ActivityProgressUpdate) => {
+			if (!backendActivity) return
 
-	const handleMetricsChange = useCallback((partial: Partial<ActivityMetrics>) => {
-		setMetrics(prev => ({ ...prev, ...partial }))
-	}, [])
+			try {
+				const token = await getAccessTokenSilently()
+				const updated = await activityApi.updateProgress(backendActivity.id, update, token)
+				setBackendProgress(updated)
+			} catch (err) {
+				console.error('Failed to save progress:', err)
+			}
+		},
+		[backendActivity, getAccessTokenSilently],
+	)
 
-	const handleStart = useCallback(() => {
-		if (!timeback) return
-		if (timebackVerification.status !== 'verified') return
-		if (activityState !== 'idle') return
+	useEffect(() => {
+		if (!timeback || timebackVerification.status !== 'verified') return
+		if (activity) return
+		if (!backendProgress) return
+		if (activityState === 'idle' || activityState === 'submitted') return
 
 		const a = timeback.activity.start({
 			id: config.activityId,
@@ -113,46 +147,190 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 
 		setActivity(a)
 		setActivityState('active')
-		setElapsedMs(0)
-	}, [timeback, timebackVerification.status, activityState, config])
+		void saveProgressToBackend({ status: 'in_progress' })
+	}, [
+		activity,
+		activityState,
+		backendProgress,
+		config.activityId,
+		config.activityName,
+		saveProgressToBackend,
+		timeback,
+		timebackVerification.status,
+	])
 
-	const handlePause = useCallback(() => {
-		if (!activity || activityState !== 'active') return
-		activity.pause()
-		setActivityState('paused')
-	}, [activity, activityState])
+	const handleAnswerQuestion = useCallback(
+		(isCorrect: boolean) => {
+			if (activityState !== 'active' && activityState !== 'paused') return
 
-	const handleResume = useCallback(() => {
-		if (!activity || activityState !== 'paused') return
-		activity.resume()
-		setActivityState('active')
-	}, [activity, activityState])
+			const nextTotal = metrics.totalQuestions + 1
+			const nextCorrect = metrics.correctQuestions + (isCorrect ? 1 : 0)
 
-	const handleEnd = useCallback(async () => {
-		if (!activity) return
-		if (activityState !== 'active' && activityState !== 'paused') return
+			setMetrics(prev => ({
+				...prev,
+				totalQuestions: nextTotal,
+				correctQuestions: nextCorrect,
+			}))
 
-		setActivityState('submitting')
+			void saveProgressToBackend({
+				status: 'in_progress',
+				total_questions: nextTotal,
+				correct_questions: nextCorrect,
+				mastered_units: metrics.masteredUnits,
+				...(metrics.xpEarned !== '' && { xp_earned: metrics.xpEarned as number }),
+				elapsed_ms: activity?.elapsedMs ?? elapsedMs,
+			})
+		},
+		[
+			activity,
+			activityState,
+			elapsedMs,
+			metrics.correctQuestions,
+			metrics.masteredUnits,
+			metrics.totalQuestions,
+			metrics.xpEarned,
+			saveProgressToBackend,
+		],
+	)
+
+	const handleStart = useCallback(async () => {
+		if (!timeback) return
+		if (timebackVerification.status !== 'verified') return
+		if (activityState !== 'idle') return
 
 		try {
-			await activity.end({
-				totalQuestions: metrics.totalQuestions,
-				correctQuestions: metrics.correctQuestions,
-				...(metrics.xpEarned !== '' && { xpEarned: metrics.xpEarned }),
-				...(metrics.masteredUnits > 0 && { masteredUnits: metrics.masteredUnits }),
-			})
-			setActivityState('submitted')
-		} catch (error) {
-			console.error('Failed to end activity:', error)
-			setActivityState(activity.isPaused ? 'paused' : 'active')
-		}
-	}, [activity, activityState, metrics])
+			const token = await getAccessTokenSilently()
 
-	const handleReset = useCallback(() => {
+			let activityDef: BackendActivity
+			const activities = await activityApi.listActivities(token)
+			const existing = activities.find(a => a.activity_id === config.activityId)
+
+			if (existing) {
+				activityDef = existing
+			} else {
+				activityDef = await activityApi.createActivity(
+					{
+						activity_id: config.activityId,
+						name: config.activityName,
+						course_code: COURSE.code,
+					},
+					token,
+				)
+			}
+
+			const progress = await activityApi.startActivity(activityDef.id, token)
+			setBackendActivity(activityDef)
+			setBackendProgress(progress)
+
+			const a = timeback.activity.start({
+				id: config.activityId,
+				name: config.activityName,
+				course: { code: COURSE.code },
+			})
+
+			setActivity(a)
+			setActivityState('active')
+			setElapsedMs(0)
+			setMetrics({
+				correctQuestions: 0,
+				totalQuestions: 0,
+				masteredUnits: 0,
+				xpEarned: '',
+			})
+		} catch (err) {
+			console.error('Failed to start activity:', err)
+		}
+	}, [timeback, timebackVerification.status, activityState, config, getAccessTokenSilently])
+
+	const handleOpenEndModal = useCallback(() => {
+		if (activityState === 'active' || activityState === 'paused') {
+			setIsEndModalOpen(true)
+		}
+	}, [activityState])
+
+	const handlePause = useCallback(async () => {
+		if (!activity || activityState !== 'active') return
+
+		activity.pause()
+		setActivityState('paused')
+
+		await saveProgressToBackend({
+			status: 'paused',
+			elapsed_ms: activity.elapsedMs,
+			correct_questions: metrics.correctQuestions,
+			total_questions: metrics.totalQuestions,
+			mastered_units: metrics.masteredUnits,
+			...(metrics.xpEarned !== '' && { xp_earned: metrics.xpEarned as number }),
+		})
+	}, [activity, activityState, metrics, saveProgressToBackend])
+
+	const handleResume = useCallback(async () => {
+		if (!activity || activityState !== 'paused') return
+
+		activity.resume()
+		setActivityState('active')
+
+		await saveProgressToBackend({ status: 'in_progress' })
+	}, [activity, activityState, saveProgressToBackend])
+
+	const handleConfirmEnd = useCallback(
+		async (finalConfig: ActivityConfig, finalMetrics: ActivityMetrics) => {
+			if (!activity) return
+			if (activityState !== 'active' && activityState !== 'paused') return
+
+			setActivityState('submitting')
+
+			try {
+				await activity.end({
+					totalQuestions: finalMetrics.totalQuestions,
+					correctQuestions: finalMetrics.correctQuestions,
+					...(finalMetrics.xpEarned !== '' && { xpEarned: finalMetrics.xpEarned }),
+					...(finalMetrics.masteredUnits > 0 && { masteredUnits: finalMetrics.masteredUnits }),
+				})
+
+				await saveProgressToBackend({
+					status: 'completed',
+					elapsed_ms: activity.elapsedMs,
+					correct_questions: finalMetrics.correctQuestions,
+					total_questions: finalMetrics.totalQuestions,
+					mastered_units: finalMetrics.masteredUnits,
+					...(finalMetrics.xpEarned !== '' && { xp_earned: finalMetrics.xpEarned as number }),
+				})
+
+				setConfig(finalConfig)
+				setMetrics(finalMetrics)
+				setActivityState('submitted')
+				setIsEndModalOpen(false)
+			} catch (error) {
+				console.error('Failed to end activity:', error)
+				setActivityState('active')
+			}
+		},
+		[activity, activityState, saveProgressToBackend],
+	)
+
+	const handleReset = useCallback(async () => {
+		if (backendActivity) {
+			try {
+				const token = await getAccessTokenSilently()
+				await activityApi.resetProgress(backendActivity.id, token)
+			} catch (err) {
+				console.error('Failed to reset progress:', err)
+			}
+		}
+
 		setActivity(undefined)
+		setBackendActivity(undefined)
+		setBackendProgress(undefined)
 		setActivityState('idle')
 		setElapsedMs(0)
-	}, [])
+		setMetrics({
+			correctQuestions: 0,
+			totalQuestions: 0,
+			masteredUnits: 0,
+			xpEarned: '',
+		})
+	}, [backendActivity, getAccessTokenSilently])
 
 	const isReady = timebackVerification.status === 'verified' && !!timeback
 
@@ -179,22 +357,27 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 				onFetchProfile={fetchProfile}
 			/>
 
-			<ActivityGate
-				timebackVerification={timebackVerification}
-				isReady={isReady}
-				activityState={activityState}
-				elapsedMs={elapsedMs}
-				course={COURSE}
-				config={config}
-				metrics={metrics}
-				onConfigChange={handleConfigChange}
-				onMetricsChange={handleMetricsChange}
-				onStart={handleStart}
-				onPause={handlePause}
-				onResume={handleResume}
-				onEnd={handleEnd}
-				onReset={handleReset}
-			/>
+			<TimebackGate timebackVerification={timebackVerification} isReady={isReady}>
+				<QuestionAnswerer
+					state={activityState}
+					metrics={metrics}
+					elapsedMs={elapsedMs}
+					onStart={handleStart}
+					onAnswer={handleAnswerQuestion}
+					onPause={handlePause}
+					onResume={handleResume}
+					onEnd={handleOpenEndModal}
+					onReset={handleReset}
+				/>
+				<EndActivityModal
+					open={isEndModalOpen}
+					config={config}
+					metrics={metrics}
+					elapsedMs={elapsedMs}
+					onClose={() => setIsEndModalOpen(false)}
+					onSubmit={handleConfirmEnd}
+				/>
+			</TimebackGate>
 		</div>
 	)
 }

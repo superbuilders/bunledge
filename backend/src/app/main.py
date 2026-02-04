@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import users_router
+from .routes import activities_router, users_router
 from .timeback import create_timeback_router
 
 
@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Bunledge API", lifespan=lifespan)
 
 app.include_router(users_router)
+app.include_router(activities_router)
 
 app.add_middleware(
     CORSMiddleware,

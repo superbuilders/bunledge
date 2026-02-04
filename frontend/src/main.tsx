@@ -26,6 +26,8 @@ function Auth0ProviderWithNavigate({ children }: { children: React.ReactNode }) 
 		<Auth0Provider
 			domain={auth0Domain}
 			clientId={auth0ClientId}
+			cacheLocation="localstorage"
+			useRefreshTokens
 			authorizationParams={{
 				redirect_uri: window.location.origin,
 				audience: auth0Audience,
