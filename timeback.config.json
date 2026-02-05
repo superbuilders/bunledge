@@ -5,7 +5,23 @@
   "courses": [
     {
       "subject": "Math",
-      "courseCode": "BUNLEDGE-V0-MATH"
+      "courseCode": "BUNLEDGE-V0-MATH",
+      "ids": {
+        "staging": "96ded684-e2e3-4176-a6cd-f6a21e8f3d81"
+      },
+      "metadata": {
+        "goals": {
+          "dailyXp": 25,
+          "dailyLessons": 1,
+          "dailyAccuracy": 80,
+          "dailyActiveMinutes": 25,
+          "dailyMasteredUnits": 2
+        },
+        "metrics": {
+          "totalXp": 10,
+          "totalLessons": 1
+        }
+      }
     }
   ]
 }

@@ -170,6 +170,8 @@ async def update_progress(
             status_code=404, detail="No progress found. Start the activity first."
         )
 
+    if update.run_id is not None:
+        progress.run_id = update.run_id
     if update.correct_questions is not None:
         progress.correct_questions = update.correct_questions
     if update.total_questions is not None:
@@ -206,6 +208,7 @@ async def update_progress(
                         "name": activity.name,
                         "course": {"code": activity.course_code},
                     },
+                    "run_id": progress.run_id,
                     "metrics": {
                         "total_questions": progress.total_questions,
                         "correct_questions": progress.correct_questions,

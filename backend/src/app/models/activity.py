@@ -46,6 +46,8 @@ class ActivityRead(ActivityBase):
 
 class ActivityProgressBase(SQLModel):
     status: ActivityStatus = Field(default=ActivityStatus.not_started)
+    # SDK-generated run ID for correlating heartbeats with completion
+    run_id: Optional[str] = None
     # Metrics - matches frontend's ActivityMetrics
     correct_questions: int = Field(default=0)
     total_questions: int = Field(default=0)
@@ -74,6 +76,7 @@ class ActivityProgressUpdate(SQLModel):
     """Used when saving progress."""
 
     status: Optional[ActivityStatus] = None
+    run_id: Optional[str] = None
     correct_questions: Optional[int] = None
     total_questions: Optional[int] = None
     mastered_units: Optional[int] = None

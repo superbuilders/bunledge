@@ -17,6 +17,7 @@ export interface ActivityProgress {
 	user_id: number
 	activity_id: number
 	status: ActivityStatus
+	run_id: string | null
 	correct_questions: number
 	total_questions: number
 	mastered_units: number
@@ -29,6 +30,7 @@ export interface ActivityProgress {
 
 export interface ActivityProgressUpdate {
 	status?: ActivityStatus
+	run_id?: string
 	correct_questions?: number
 	total_questions?: number
 	mastered_units?: number

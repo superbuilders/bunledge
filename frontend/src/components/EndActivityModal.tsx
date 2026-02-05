@@ -3,52 +3,47 @@ import { useEffect, useState } from 'react'
 import { SimpleModal } from './SimpleModal'
 import { formatTime } from '../lib/utils'
 
-interface ActivityConfig {
-	activityId: string
-	activityName: string
-}
-
 interface ActivityMetrics {
 	correctQuestions: number
 	totalQuestions: number
 	masteredUnits: number
-	xpEarned: number | ''
+	xpEarned: number
 }
 
 interface EndActivityModalProps {
 	open: boolean
-	config: ActivityConfig
+	activityName: string
 	metrics: ActivityMetrics
 	elapsedMs: number
 	onClose: () => void
-	onSubmit: (config: ActivityConfig, metrics: ActivityMetrics) => void
+	onSubmit: (metrics: ActivityMetrics) => void
 }
 
-export function EndActivityModal({ open, config, metrics, elapsedMs, onClose, onSubmit }: EndActivityModalProps) {
-	const [draftConfig, setDraftConfig] = useState<ActivityConfig>(config)
+export function EndActivityModal({
+	open,
+	activityName,
+	metrics,
+	elapsedMs,
+	onClose,
+	onSubmit,
+}: EndActivityModalProps) {
 	const [draftMetrics, setDraftMetrics] = useState<ActivityMetrics>(metrics)
 
 	useEffect(() => {
 		if (open) {
-			setDraftConfig(config)
 			setDraftMetrics(metrics)
 		}
-	}, [open, config, metrics])
+	}, [open, metrics])
 
 	return (
 		<SimpleModal open={open} title="End Activity" onClose={onClose}>
 			<div className="space-y-5">
-				<div className="space-y-3">
-					<div className="space-y-1.5">
-						<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-							Activity Name
-						</label>
-						<input
-							type="text"
-							value={draftConfig.activityName}
-							onChange={e => setDraftConfig(prev => ({ ...prev, activityName: e.target.value }))}
-							className="w-full h-10 rounded-lg border border-zinc-200 px-3 text-sm font-medium text-zinc-900 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent focus:bg-white"
-						/>
+				<div className="space-y-1.5">
+					<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+						Activity
+					</label>
+					<div className="px-3 py-2 rounded-lg bg-zinc-50 text-sm font-medium text-zinc-700">
+						{activityName}
 					</div>
 				</div>
 
@@ -105,7 +100,7 @@ export function EndActivityModal({ open, config, metrics, elapsedMs, onClose, on
 
 					<div className="space-y-1.5">
 						<label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-							XP Earned (optional)
+							XP Earned
 						</label>
 						<input
 							type="number"
@@ -113,12 +108,11 @@ export function EndActivityModal({ open, config, metrics, elapsedMs, onClose, on
 							onChange={e =>
 								setDraftMetrics(prev => ({
 									...prev,
-									xpEarned: e.target.value === '' ? '' : Number(e.target.value),
+									xpEarned: Number(e.target.value),
 								}))
 							}
-							placeholder="Auto-calculated"
 							min="0"
-							className="w-full h-10 rounded-lg border border-zinc-200 px-3 text-sm font-medium text-zinc-900 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent focus:bg-white placeholder:text-zinc-400"
+							className="w-full h-10 rounded-lg border border-zinc-200 px-3 text-sm font-medium text-zinc-900 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent focus:bg-white"
 						/>
 					</div>
 				</div>
@@ -131,7 +125,7 @@ export function EndActivityModal({ open, config, metrics, elapsedMs, onClose, on
 						Cancel
 					</button>
 					<button
-						onClick={() => onSubmit(draftConfig, draftMetrics)}
+						onClick={() => onSubmit(draftMetrics)}
 						className="flex-1 h-12 rounded-xl bg-zinc-900 text-white font-semibold text-sm hover:bg-zinc-800 transition-colors"
 					>
 						Submit Activity

@@ -5,6 +5,8 @@ interface QuestionAnswererProps {
 	state: ActivityState
 	metrics: ActivityMetrics
 	elapsedMs: number
+	windowMs?: number
+	runId?: string
 	onStart: () => void
 	onAnswer: (isCorrect: boolean) => void
 	onPause: () => void
@@ -23,6 +25,8 @@ export function QuestionAnswerer({
 	state,
 	metrics,
 	elapsedMs,
+	windowMs,
+	runId,
 	onStart,
 	onAnswer,
 	onPause,
@@ -129,6 +133,17 @@ export function QuestionAnswerer({
 				</button>
 			)}
 
+			{runId && (
+				<div className="px-4 py-2 bg-blue-50 border border-blue-100 rounded-lg">
+					<div className="flex items-center justify-between">
+						<span className="text-[10px] font-semibold uppercase tracking-wider text-blue-500">
+							Run ID (correlation)
+						</span>
+						<span className="text-xs font-mono text-blue-700">{runId}</span>
+					</div>
+				</div>
+			)}
+
 			{/* Stats Dashboard */}
 			<div className="grid grid-cols-2 gap-4">
 				<div className="px-5 py-4 bg-zinc-50/50 rounded-2xl border border-zinc-100">
@@ -141,9 +156,16 @@ export function QuestionAnswerer({
 					</div>
 				</div>
 				<div className="px-5 py-4 bg-zinc-50/50 rounded-2xl border border-zinc-100">
-					<div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Time</div>
-					<div className="text-xl font-bold text-zinc-900 font-mono tracking-tight">
-						{formatTime(elapsedMs)}
+					<div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Total</div>
+					<div className="flex items-baseline gap-2">
+						<span className="text-xl font-bold text-zinc-900 font-mono tracking-tight">
+							{formatTime(elapsedMs)}
+						</span>
+						{windowMs !== undefined && (
+							<span className="text-xs font-mono text-zinc-300 tabular-nums">
+								{formatTime(windowMs)}
+							</span>
+						)}
 					</div>
 				</div>
 			</div>

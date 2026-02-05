@@ -20,6 +20,8 @@ case $METHOD in
     ensure_postgres
     echo "Dropping all tables..."
     docker exec bunledge-postgres psql -U bunledge -d bunledge -c "
+      DROP TABLE IF EXISTS activityprogress CASCADE;
+      DROP TABLE IF EXISTS activity CASCADE;
       DROP TABLE IF EXISTS \"user\" CASCADE;
     "
     echo "Recreating tables..."

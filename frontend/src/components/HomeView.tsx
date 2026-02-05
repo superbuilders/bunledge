@@ -92,12 +92,17 @@ export function HomeView({ activities, progressMap, onSelectActivity, onCreateAc
 										{getStatusLabel(progress)}
 									</span>
 								</div>
-								{progress && progress.total_questions > 0 && (
-									<div className="mt-2 text-sm text-gray-600">
-										{progress.correct_questions}/{progress.total_questions} correct
-									</div>
-								)}
-							</button>
+							{progress && progress.total_questions > 0 && (
+								<div className="mt-2 text-sm text-gray-600">
+									{progress.correct_questions}/{progress.total_questions} correct
+								</div>
+							)}
+							{progress?.run_id && (
+								<div className="mt-1 text-xs text-zinc-400 font-mono">
+									runId: {progress.run_id.slice(0, 8)}...
+								</div>
+							)}
+						</button>
 						)
 					})}
 				</div>

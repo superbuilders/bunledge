@@ -1,5 +1,12 @@
 /**
  * View shown when user is authenticated.
+ *
+ * Demonstrates resumable activities with runId correlation:
+ * 1. Home view shows list of activities with their status
+ * 2. Selecting an activity starts/resumes it with the same runId
+ * 3. Progress is saved to backend including runId
+ * 4. Activity completion is handled client-side via activity.end(metrics)
+ *    which sends to /api/timeback/activity/submit — no backend activity.record()
  */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -37,7 +44,7 @@ export interface ActivityMetrics {
 	correctQuestions: number
 	totalQuestions: number
 	masteredUnits: number
-	xpEarned: number | ''
+	xpEarned: number
 }
 
 /**
@@ -73,6 +80,7 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 	const [activity, setActivity] = useState<Activity | undefined>(undefined)
 	const [activityState, setActivityState] = useState<ActivityState>('idle')
 	const [elapsedMs, setElapsedMs] = useState(0)
+	const [windowMs, setWindowMs] = useState(0)
 
 	const [config, setConfig] = useState<ActivityConfig>({
 		activityId: 'bunledge_lesson_1',
@@ -83,7 +91,7 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		correctQuestions: 0,
 		totalQuestions: 0,
 		masteredUnits: 0,
-		xpEarned: '',
+		xpEarned: 0,
 	})
 
 	const [isEndModalOpen, setIsEndModalOpen] = useState(false)
@@ -106,12 +114,14 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		loadData()
 	}, [getAccessTokenSilently])
 
+	// Poll elapsed time from the SDK activity
 	useEffect(() => {
 		if (!activity) return
 		if (activityState !== 'active' && activityState !== 'paused') return
 
 		const interval = setInterval(() => {
-			setElapsedMs(activity.elapsedMs)
+			setElapsedMs(activity.totalActiveMs)
+			setWindowMs(activity.elapsedMs)
 		}, 100)
 
 		return () => clearInterval(interval)
@@ -132,21 +142,24 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		[backendActivity, getAccessTokenSilently],
 	)
 
+	// Auto-start SDK activity when backend progress exists but no SDK activity
 	useEffect(() => {
 		if (!timeback || timebackVerification.status !== 'verified') return
 		if (activity) return
 		if (!backendProgress) return
 		if (activityState === 'idle' || activityState === 'submitted') return
 
+		// Pass existing runId to correlate events across sessions
 		const a = timeback.activity.start({
 			id: config.activityId,
 			name: config.activityName,
 			course: { code: COURSE.code },
+			runId: backendProgress.run_id ?? undefined,
 		})
 
 		setActivity(a)
 		setActivityState('active')
-		void saveProgressToBackend({ status: 'in_progress' })
+		void saveProgressToBackend({ status: 'in_progress', run_id: a.runId })
 	}, [
 		activity,
 		activityState,
@@ -176,8 +189,8 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 				total_questions: nextTotal,
 				correct_questions: nextCorrect,
 				mastered_units: metrics.masteredUnits,
-				...(metrics.xpEarned !== '' && { xp_earned: metrics.xpEarned as number }),
-				elapsed_ms: activity?.elapsedMs ?? elapsedMs,
+				xp_earned: metrics.xpEarned,
+				elapsed_ms: activity?.totalActiveMs ?? elapsedMs,
 			})
 		},
 		[
@@ -221,20 +234,26 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 			setBackendActivity(activityDef)
 			setBackendProgress(progress)
 
+			// Start SDK activity — heartbeats begin automatically
 			const a = timeback.activity.start({
 				id: config.activityId,
 				name: config.activityName,
 				course: { code: COURSE.code },
+				runId: progress.run_id ?? undefined,
 			})
+
+			// Store the runId in backend for future correlation
+			await activityApi.updateProgress(activityDef.id, { run_id: a.runId }, token)
 
 			setActivity(a)
 			setActivityState('active')
 			setElapsedMs(0)
+			setWindowMs(0)
 			setMetrics({
 				correctQuestions: 0,
 				totalQuestions: 0,
 				masteredUnits: 0,
-				xpEarned: '',
+				xpEarned: 0,
 			})
 		} catch (err) {
 			console.error('Failed to start activity:', err)
@@ -255,11 +274,11 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 
 		await saveProgressToBackend({
 			status: 'paused',
-			elapsed_ms: activity.elapsedMs,
+			elapsed_ms: activity.totalActiveMs,
 			correct_questions: metrics.correctQuestions,
 			total_questions: metrics.totalQuestions,
 			mastered_units: metrics.masteredUnits,
-			...(metrics.xpEarned !== '' && { xp_earned: metrics.xpEarned as number }),
+			xp_earned: metrics.xpEarned,
 		})
 	}, [activity, activityState, metrics, saveProgressToBackend])
 
@@ -272,33 +291,56 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		await saveProgressToBackend({ status: 'in_progress' })
 	}, [activity, activityState, saveProgressToBackend])
 
+	/**
+	 * Submit and end the activity.
+	 *
+	 * 1. Flush remaining time via activity.end() (time-only, no completion event)
+	 * 2. Save final state to backend with status='completed'
+	 * 3. Backend calls timeback.activity.record() to emit the ActivityCompletedEvent
+	 */
 	const handleConfirmEnd = useCallback(
-		async (finalConfig: ActivityConfig, finalMetrics: ActivityMetrics) => {
+		async (finalMetrics: ActivityMetrics) => {
 			if (!activity) return
 			if (activityState !== 'active' && activityState !== 'paused') return
 
 			setActivityState('submitting')
+			setIsEndModalOpen(false)
 
 			try {
+				/**
+				 * Attempt to flush any remaining time to Timeback.
+				 *
+				 * This does not emit a completion event; it simply ensures that the most accurate
+				 * total time-on-task has been sent upstream before finalizing the activity.
+				 * If this fails, the error is caught, as this is a best-effort operation.
+				 */
 				try {
 					await activity.end()
 				} catch (err) {
 					console.warn('Failed to flush time to Timeback:', err)
 				}
 
+				/**
+				 * Save the final state of the user's activity progress to the backend.
+				 *
+				 * This action triggers the backend to record the activity completion event
+				 * using timeback.activity.record(), ensuring both metrics and completion
+				 * status are stored for analytics and progress tracking.
+				 *
+				 * All relevant metrics are included to persist an accurate summary of
+				 * the user's session at the moment they end the activity.
+				 */
 				await saveProgressToBackend({
 					status: 'completed',
-					elapsed_ms: activity.elapsedMs,
+					elapsed_ms: activity.totalActiveMs,
 					correct_questions: finalMetrics.correctQuestions,
 					total_questions: finalMetrics.totalQuestions,
 					mastered_units: finalMetrics.masteredUnits,
-					...(finalMetrics.xpEarned !== '' && { xp_earned: finalMetrics.xpEarned as number }),
+					xp_earned: finalMetrics.xpEarned,
 				})
 
-				setConfig(finalConfig)
 				setMetrics(finalMetrics)
 				setActivityState('submitted')
-				setIsEndModalOpen(false)
 			} catch (error) {
 				console.error('Failed to end activity:', error)
 				setActivityState('active')
@@ -322,16 +364,23 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		setBackendProgress(undefined)
 		setActivityState('idle')
 		setElapsedMs(0)
+		setWindowMs(0)
 		setMetrics({
 			correctQuestions: 0,
 			totalQuestions: 0,
 			masteredUnits: 0,
-			xpEarned: '',
+			xpEarned: 0,
 		})
 	}, [backendActivity, getAccessTokenSilently])
 
+	/**
+	 * Go back to home, saving progress.
+	 *
+	 * Calls activity.end() without metrics — time-only flush, no completion event.
+	 */
 	const handleGoHome = useCallback(async () => {
 		if (activity && (activityState === 'active' || activityState === 'paused')) {
+			// Flush time only (no completion event)
 			try {
 				await activity.end()
 			} catch (err) {
@@ -340,11 +389,11 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 
 			await saveProgressToBackend({
 				status: 'paused',
-				elapsed_ms: activity.elapsedMs,
+				elapsed_ms: activity.totalActiveMs,
 				correct_questions: metrics.correctQuestions,
 				total_questions: metrics.totalQuestions,
 				mastered_units: metrics.masteredUnits,
-				...(metrics.xpEarned !== '' && { xp_earned: metrics.xpEarned as number }),
+				xp_earned: metrics.xpEarned,
 			})
 		}
 
@@ -361,7 +410,8 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 		setBackendProgress(undefined)
 		setActivityState('idle')
 		setElapsedMs(0)
-		setMetrics({ correctQuestions: 0, totalQuestions: 0, masteredUnits: 0, xpEarned: '' })
+		setWindowMs(0)
+		setMetrics({ correctQuestions: 0, totalQuestions: 0, masteredUnits: 0, xpEarned: 0 })
 		setView('home')
 	}, [activity, activityState, metrics, saveProgressToBackend, getAccessTokenSilently])
 
@@ -392,16 +442,20 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 					correctQuestions: updatedProgress.correct_questions,
 					totalQuestions: updatedProgress.total_questions,
 					masteredUnits: updatedProgress.mastered_units,
-					xpEarned: updatedProgress.xp_earned ?? '',
+					xpEarned: updatedProgress.xp_earned ?? 0,
 				})
 				setElapsedMs(updatedProgress.elapsed_ms)
 
-				// Start a new timeback session
+				// Start SDK activity — pass existing runId for correlation
 				const a = timeback.activity.start({
 					id: selectedActivity.activity_id,
 					name: selectedActivity.name,
 					course: { code: COURSE.code },
+					runId: updatedProgress.run_id ?? undefined,
 				})
+
+				// Store the (possibly new) runId in backend
+				await activityApi.updateProgress(selectedActivity.id, { run_id: a.runId }, token)
 
 				setActivity(a)
 				setActivityState('active')
@@ -480,6 +534,8 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 							state={activityState}
 							metrics={metrics}
 							elapsedMs={elapsedMs}
+							windowMs={windowMs}
+							runId={activity?.runId}
 							onStart={handleStart}
 							onAnswer={handleAnswerQuestion}
 							onPause={handlePause}
@@ -488,14 +544,16 @@ export function AuthenticatedView({ onLogout }: AuthenticatedViewProps) {
 							onReset={handleReset}
 							onGoHome={handleGoHome}
 						/>
-						<EndActivityModal
-							open={isEndModalOpen}
-							config={config}
-							metrics={metrics}
-							elapsedMs={elapsedMs}
-							onClose={() => setIsEndModalOpen(false)}
-							onSubmit={handleConfirmEnd}
-						/>
+						{backendActivity && (
+							<EndActivityModal
+								open={isEndModalOpen}
+								activityName={backendActivity.name}
+								metrics={metrics}
+								elapsedMs={elapsedMs}
+								onClose={() => setIsEndModalOpen(false)}
+								onSubmit={handleConfirmEnd}
+							/>
+						)}
 					</>
 				)}
 			</TimebackGate>
