@@ -7,13 +7,16 @@ Integrates Timeback with custom auth (using existing Auth0 authentication).
 from fastapi import Request
 from sqlmodel import select
 from timeback import ApiCredentials, CustomIdentityConfig, TimebackConfig
-from timeback.server import create_server
+from timeback.server import TimebackInstance, create_server
 from timeback.server.adapters.fastapi import to_fastapi_router
 
 from .auth import verify_token
 from .config import get_settings
 from .db import async_session
 from .models import User
+
+def get_timeback(request: Request) -> TimebackInstance:
+    return request.app.state.timeback
 
 
 async def get_user_email_from_request(request: Request) -> str | None:
@@ -55,15 +58,10 @@ async def get_user_email_from_request(request: Request) -> str | None:
         return None
 
 
-async def create_timeback_router():
-    """
-    Create and configure the Timeback FastAPI router.
-
-    Uses custom auth mode since we handle authentication via Auth0.
-    """
+async def create_timeback_instance() -> TimebackInstance:
     settings = get_settings()
 
-    timeback = await create_server(
+    return await create_server(
         TimebackConfig(
             env=settings.timeback_env,  # type: ignore[arg-type]
             config_path="../timeback.config.json",
@@ -78,4 +76,5 @@ async def create_timeback_router():
         )
     )
 
+def create_timeback_router(timeback: TimebackInstance):
     return to_fastapi_router(timeback)

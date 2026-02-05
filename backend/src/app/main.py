@@ -4,14 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routes import activities_router, users_router
-from .timeback import create_timeback_router
+from .timeback import create_timeback_instance, create_timeback_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize Timeback on startup."""
-    timeback_router = await create_timeback_router()
-    app.include_router(timeback_router, prefix="/api/timeback")
+    timeback = await create_timeback_instance()
+    app.state.timeback = timeback
+    app.include_router(create_timeback_router(timeback), prefix="/api/timeback")
 
     yield
 

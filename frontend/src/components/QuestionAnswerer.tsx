@@ -11,6 +11,7 @@ interface QuestionAnswererProps {
 	onResume: () => void
 	onEnd: () => void
 	onReset: () => void
+	onGoHome?: () => void
 }
 
 function formatScore(metrics: ActivityMetrics): string {
@@ -28,6 +29,7 @@ export function QuestionAnswerer({
 	onResume,
 	onEnd,
 	onReset,
+	onGoHome,
 }: QuestionAnswererProps) {
 	const isIdle = state === 'idle'
 	const isSubmitted = state === 'submitted'
@@ -54,6 +56,26 @@ export function QuestionAnswerer({
 	if (isSubmitted) {
 		return (
 			<div className="space-y-6">
+				{onGoHome && (
+					<button
+						onClick={onGoHome}
+						className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M19 12H5M12 19l-7-7 7-7" />
+						</svg>
+						<span>Back to Home</span>
+					</button>
+				)}
 				<div className="p-6 bg-emerald-50/50 rounded-3xl border border-emerald-100 text-center">
 					<div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mb-3">
 						<svg
@@ -75,17 +97,38 @@ export function QuestionAnswerer({
 					</div>
 				</div>
 				<button
-					onClick={onReset}
+					onClick={onGoHome}
 					className="w-full h-14 rounded-2xl bg-zinc-900 text-white font-bold text-sm hover:bg-zinc-800 transition-all active:scale-[0.98]"
 				>
-					Start Another Activity
+					Back to Activities
 				</button>
 			</div>
 		)
 	}
 
 	return (
-		<div className="space-y-8">
+		<div className="space-y-6">
+			{onGoHome && (
+				<button
+					onClick={onGoHome}
+					className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<path d="M19 12H5M12 19l-7-7 7-7" />
+					</svg>
+					<span>Back to Home</span>
+				</button>
+			)}
+
 			{/* Stats Dashboard */}
 			<div className="grid grid-cols-2 gap-4">
 				<div className="px-5 py-4 bg-zinc-50/50 rounded-2xl border border-zinc-100">

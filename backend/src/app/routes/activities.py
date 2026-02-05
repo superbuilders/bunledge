@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from timeback.server import TimebackInstance
 
 from ..db import get_session
 from ..dependencies import CurrentUser
@@ -15,6 +16,7 @@ from ..models import (
     ActivityRead,
     ActivityStatus,
 )
+from ..timeback import get_timeback
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -53,8 +55,13 @@ async def list_my_progress(
     session: AsyncSession = Depends(get_session),
 ):
     """List all activity progress for the current user."""
+    user_id = current_user.id
+
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="User missing id")
+
     result = await session.execute(
-        select(ActivityProgress).where(ActivityProgress.user_id == current_user.id)
+        select(ActivityProgress).where(ActivityProgress.user_id == user_id)
     )
     return result.scalars().all()
 
@@ -66,9 +73,14 @@ async def get_my_progress(
     session: AsyncSession = Depends(get_session),
 ):
     """Get current user's progress for a specific activity."""
+    user_id = current_user.id
+
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="User missing id")
+
     result = await session.execute(
         select(ActivityProgress).where(
-            ActivityProgress.user_id == current_user.id,
+            ActivityProgress.user_id == user_id,
             ActivityProgress.activity_id == activity_id,
         )
     )
@@ -89,6 +101,10 @@ async def start_activity(
     session: AsyncSession = Depends(get_session),
 ):
     """Start an activity - creates a new progress record."""
+    user_id = current_user.id
+
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="User missing id")
 
     activity = await session.get(Activity, activity_id)
 
@@ -97,7 +113,7 @@ async def start_activity(
 
     result = await session.execute(
         select(ActivityProgress).where(
-            ActivityProgress.user_id == current_user.id,
+            ActivityProgress.user_id == user_id,
             ActivityProgress.activity_id == activity_id,
         )
     )
@@ -105,14 +121,15 @@ async def start_activity(
     existing = result.scalar_one_or_none()
 
     if existing:
-        raise HTTPException(
-            status_code=409, detail="Progress already exists. Use PUT to update."
-        )
-
-    assert current_user.id is not None
+        if existing.status == ActivityStatus.completed:
+            raise HTTPException(
+                status_code=409,
+                detail="Progress already completed. Reset to start again.",
+            )
+        return existing
 
     progress = ActivityProgress(
-        user_id=current_user.id,
+        user_id=user_id,
         activity_id=activity_id,
         status=ActivityStatus.in_progress,
         started_at=datetime.utcnow(),
@@ -132,11 +149,17 @@ async def update_progress(
     update: ActivityProgressUpdate,
     current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
+    timeback: TimebackInstance = Depends(get_timeback),
 ):
     """Update progress for an activity."""
+    user_id = current_user.id
+
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="User missing id")
+
     result = await session.execute(
         select(ActivityProgress).where(
-            ActivityProgress.user_id == current_user.id,
+            ActivityProgress.user_id == user_id,
             ActivityProgress.activity_id == activity_id,
         )
     )
@@ -158,15 +181,38 @@ async def update_progress(
     if update.elapsed_ms is not None:
         progress.elapsed_ms = update.elapsed_ms
 
+    is_completing = (
+        update.status == ActivityStatus.completed and progress.completed_at is None
+    )
+
     if update.status is not None:
         progress.status = update.status
-        if update.status == ActivityStatus.completed and progress.completed_at is None:
+        if is_completing:
             progress.completed_at = datetime.utcnow()
 
     progress.updated_at = datetime.utcnow()
 
     await session.commit()
     await session.refresh(progress)
+
+    if is_completing:
+        activity = await session.get(Activity, activity_id)
+        if activity and current_user.email:
+            await timeback.activity.record(
+                {
+                    "user": {"email": current_user.email},
+                    "activity": {
+                        "id": activity.activity_id,
+                        "name": activity.name,
+                        "course": {"code": activity.course_code},
+                    },
+                    "metrics": {
+                        "total_questions": progress.total_questions,
+                        "correct_questions": progress.correct_questions,
+                        "xp_earned": progress.xp_earned or 0,
+                    },
+                }
+            )
 
     return progress
 
@@ -178,10 +224,14 @@ async def reset_progress(
     session: AsyncSession = Depends(get_session),
 ):
     """Reset/delete progress for an activity (start over)."""
+    user_id = current_user.id
+
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="User missing id")
 
     result = await session.execute(
         select(ActivityProgress).where(
-            ActivityProgress.user_id == current_user.id,
+            ActivityProgress.user_id == user_id,
             ActivityProgress.activity_id == activity_id,
         )
     )
