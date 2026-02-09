@@ -457,7 +457,7 @@ wheels = [
 
 [[package]]
 name = "timeback-caliper"
-version = "0.1.5"
+version = "0.1.7"
 source = { editable = "../../../projects/timeback-dev-python/packages/caliper" }
 dependencies = [
     { name = "timeback-common" },
@@ -468,7 +468,7 @@ requires-dist = [{ name = "timeback-common", editable = "../../../projects/timeb
 
 [[package]]
 name = "timeback-common"
-version = "0.1.5"
+version = "0.1.7"
 source = { editable = "../../../projects/timeback-dev-python/packages/common" }
 dependencies = [
     { name = "httpx" },
@@ -483,7 +483,7 @@ requires-dist = [
 
 [[package]]
 name = "timeback-core"
-version = "0.1.5"
+version = "0.1.7"
 source = { editable = "../../../projects/timeback-dev-python/packages/core" }
 dependencies = [
     { name = "timeback-caliper" },
@@ -502,7 +502,7 @@ requires-dist = [
 
 [[package]]
 name = "timeback-edubridge"
-version = "0.1.5"
+version = "0.1.7"
 source = { editable = "../../../projects/timeback-dev-python/packages/edubridge" }
 dependencies = [
     { name = "timeback-common" },
@@ -513,7 +513,7 @@ requires-dist = [{ name = "timeback-common", editable = "../../../projects/timeb
 
 [[package]]
 name = "timeback-oneroster"
-version = "0.1.5"
+version = "0.1.7"
 source = { editable = "../../../projects/timeback-dev-python/packages/oneroster" }
 dependencies = [
     { name = "email-validator" },
@@ -528,7 +528,7 @@ requires-dist = [
 
 [[package]]
 name = "timeback-sdk"
-version = "0.1.5"
+version = "0.1.7"
 source = { directory = "../../../projects/timeback-dev-python/packages/timeback" }
 dependencies = [
     { name = "httpx" },
