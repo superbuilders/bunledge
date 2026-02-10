@@ -59,7 +59,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pyjwt", specifier = ">=2.11.0" },
     { name = "sqlmodel", specifier = ">=0.0.32" },
-    { name = "timeback-sdk", extras = ["fastapi"], directory = "../../../projects/timeback-dev-python/packages/timeback" },
+    { name = "timeback-sdk", extras = ["fastapi"] },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
@@ -459,103 +459,87 @@ wheels = [
 [[package]]
 name = "timeback-caliper"
 version = "0.1.8"
-source = { editable = "../../../projects/timeback-dev-python/packages/caliper" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "timeback-common" },
 ]
-
-[package.metadata]
-requires-dist = [{ name = "timeback-common", editable = "../../../projects/timeback-dev-python/packages/common" }]
+sdist = { url = "https://files.pythonhosted.org/packages/4d/66/4a3aac4937fa603b4dfc42ef0bd5e2510b382316bef76ace966d4d3c0ced/timeback_caliper-0.1.8.tar.gz", hash = "sha256:6b025ff2617abc5ebc7d2e6987082abb9211a731abde23c81bfee4b3b65cb897", size = 25585, upload-time = "2026-02-10T00:42:48.986Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/3b/cb38f45e47bb3df9b63d02493a568b4d7b02a97158fa71ff03d089be79b7/timeback_caliper-0.1.8-py3-none-any.whl", hash = "sha256:8fe286714bd9a54690545dad3741db34e09166cf96985f4edc07079848fa09c2", size = 24358, upload-time = "2026-02-10T00:42:49.931Z" },
+]
 
 [[package]]
 name = "timeback-common"
 version = "0.1.8"
-source = { editable = "../../../projects/timeback-dev-python/packages/common" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "pydantic", specifier = ">=2.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/36/99/235e4e47c9e08f8e7555e0b3f22dae0cea26724ab91baaab63af3bbf2cf7/timeback_common-0.1.8.tar.gz", hash = "sha256:5e0ee7c14dafb78214a6710a6a84f1d3f33c2f8cad06305270cd3ecee97d992d", size = 39337, upload-time = "2026-02-10T00:42:53.404Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/09/fa0cfa84c502ba69e5d16eb41d5c49d9582fb0564a1860061d6fd8e7ec28/timeback_common-0.1.8-py3-none-any.whl", hash = "sha256:cc966078ee7f4bfb690654b5ce2a3b291df4e3fb9c054bcb26d689d8de1fb8a6", size = 33851, upload-time = "2026-02-10T00:42:52.059Z" },
 ]
 
 [[package]]
 name = "timeback-core"
 version = "0.1.8"
-source = { editable = "../../../projects/timeback-dev-python/packages/core" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "timeback-caliper" },
     { name = "timeback-common" },
     { name = "timeback-edubridge" },
     { name = "timeback-oneroster" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "timeback-caliper", editable = "../../../projects/timeback-dev-python/packages/caliper" },
-    { name = "timeback-common", editable = "../../../projects/timeback-dev-python/packages/common" },
-    { name = "timeback-edubridge", editable = "../../../projects/timeback-dev-python/packages/edubridge" },
-    { name = "timeback-oneroster", editable = "../../../projects/timeback-dev-python/packages/oneroster" },
+sdist = { url = "https://files.pythonhosted.org/packages/af/06/5d800486e37860ad027224748a3aed10a49df846d0740312603edd75d93e/timeback_core-0.1.8.tar.gz", hash = "sha256:658236a015ce8a2904fee1f2db4c7d2d579301e127393e1d6bdbff8b81390068", size = 15706, upload-time = "2026-02-10T00:42:55.567Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/97/9e596f52bc6f497183110c4d95a9216a3e919f04ad81d0b7ee225fb503ba/timeback_core-0.1.8-py3-none-any.whl", hash = "sha256:526169e54d103d932db0acb6a231eacaacd79cccc5b1a650ab64832f352e10e3", size = 13894, upload-time = "2026-02-10T00:42:54.727Z" },
 ]
 
 [[package]]
 name = "timeback-edubridge"
 version = "0.1.8"
-source = { editable = "../../../projects/timeback-dev-python/packages/edubridge" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "timeback-common" },
 ]
-
-[package.metadata]
-requires-dist = [{ name = "timeback-common", editable = "../../../projects/timeback-dev-python/packages/common" }]
+sdist = { url = "https://files.pythonhosted.org/packages/05/8d/ad6b4f18ac46eae1d3466056ef0f136db20166e2e1f099dd963761616f78/timeback_edubridge-0.1.8.tar.gz", hash = "sha256:584e548c9cb4c134df1cb34a66a35fe8e938ea0bcaa720fcdcea086597f18010", size = 26711, upload-time = "2026-02-10T00:42:57.211Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/bb/ccacc68c7554e364679c99079f17ca7f1301d07ce6a9b3ebf6479abe1b3b/timeback_edubridge-0.1.8-py3-none-any.whl", hash = "sha256:e41d1a47baeb8d7a83fc3376a41cb4414ca0a84111dcd1ab8a9b150794c3302f", size = 30146, upload-time = "2026-02-10T00:42:57.902Z" },
+]
 
 [[package]]
 name = "timeback-oneroster"
 version = "0.1.8"
-source = { editable = "../../../projects/timeback-dev-python/packages/oneroster" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "email-validator" },
     { name = "timeback-common" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "email-validator", specifier = ">=2.3.0" },
-    { name = "timeback-common", editable = "../../../projects/timeback-dev-python/packages/common" },
+sdist = { url = "https://files.pythonhosted.org/packages/c8/81/86a1a000993959236042f1bc0a104422a1bf04e74456a9317a77585bba14/timeback_oneroster-0.1.8.tar.gz", hash = "sha256:f86c3c2aedd5768608d34b032c6fa9547d242888a67784674ad680510519b299", size = 41052, upload-time = "2026-02-10T00:43:00.43Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/c7/6f7314561ebf910397ffb18dcb8b90ff6c68344901ad991cdd221c81fbf2/timeback_oneroster-0.1.8-py3-none-any.whl", hash = "sha256:2ed967c20abb79035cc43d3c4c253eefc23d95acf0f4b774ce19e6e593568f1d", size = 56872, upload-time = "2026-02-10T00:42:59.489Z" },
 ]
 
 [[package]]
 name = "timeback-sdk"
 version = "0.1.8"
-source = { directory = "../../../projects/timeback-dev-python/packages/timeback" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "starlette" },
     { name = "timeback-common" },
     { name = "timeback-core" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/73/22/6a36b8dd45c0be9de70db3904a0ee8b2bcc92e7888d91c1336edbcaf2950/timeback_sdk-0.1.8.tar.gz", hash = "sha256:047ebeec4290b7fee742c2e5cc6d0111e113e53ea5666a817a7e549eb49c0ecb", size = 90384, upload-time = "2026-02-10T00:43:03.03Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/3f/02772d7e2484dd5232f4aa80db6d59cc2f46f995e3bcf616509a0faf4f83/timeback_sdk-0.1.8-py3-none-any.whl", hash = "sha256:31d56a20696cb06730667b7e8b11e912282b15bb749f8a6f6f610960275f080c", size = 82402, upload-time = "2026-02-10T00:43:01.878Z" },
+]
 
 [package.optional-dependencies]
 fastapi = [
     { name = "fastapi" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "django", marker = "extra == 'django'", specifier = ">=4.0" },
-    { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.100.0" },
-    { name = "httpx", specifier = ">=0.27.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
-    { name = "starlette", specifier = ">=0.35.0" },
-    { name = "timeback-common", editable = "../../../projects/timeback-dev-python/packages/common" },
-    { name = "timeback-core", editable = "../../../projects/timeback-dev-python/packages/core" },
-]
-provides-extras = ["fastapi", "django", "dev"]
 
 [[package]]
 name = "typing-extensions"

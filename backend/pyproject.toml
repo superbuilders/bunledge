@@ -13,7 +13,7 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "pyjwt>=2.11.0",
     "sqlmodel>=0.0.32",
-    "timeback-sdk[fastapi] @ file:///Users/hbauer/work/projects/timeback-dev-python/packages/timeback",
+    "timeback-sdk[fastapi]",
     "uvicorn>=0.40.0",
 ]
 
