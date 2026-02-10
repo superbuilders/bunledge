@@ -16,7 +16,7 @@ from ..models import (
     ActivityRead,
     ActivityStatus,
 )
-from ..timeback import get_timeback
+from ..timeback import timeback
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -149,7 +149,7 @@ async def update_progress(
     update: ActivityProgressUpdate,
     current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
-    timeback: TimebackInstance = Depends(get_timeback),
+    tb: TimebackInstance = Depends(timeback),
 ):
     """Update progress for an activity."""
     user_id = current_user.id
@@ -200,7 +200,7 @@ async def update_progress(
     if is_completing:
         activity = await session.get(Activity, activity_id)
         if activity and current_user.email:
-            await timeback.activity.record(
+            await tb.activity.record(
                 {
                     "user": {"email": current_user.email},
                     "activity": {

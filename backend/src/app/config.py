@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from timeback import Environment
 
 
 class Settings(BaseSettings):
@@ -18,7 +19,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://bunledge:bunledge@localhost:5433/bunledge"
 
     # Timeback
-    timeback_env: str = "staging"
+    timeback_env: Environment = "staging"
+
+    # Defaults are empty strings so the app can start without a .env file
+    # (e.g. in CI or for frontend-only work). Pydantic populates these from
+    # environment variables or the .env file at runtime via SettingsConfigDict.
     timeback_api_client_id: str = ""
     timeback_api_client_secret: str = ""
 

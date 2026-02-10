@@ -3,6 +3,7 @@ from typing import Annotated, Any
 import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -60,8 +61,21 @@ async def get_current_user(
             name=userinfo.get("name") or userinfo.get("nickname"),
         )
         session.add(user)
-        await session.commit()
-        await session.refresh(user)
+        try:
+            await session.commit()
+            await session.refresh(user)
+        except IntegrityError:
+            # Another concurrent request already created this user — re-query
+            await session.rollback()
+            result = await session.execute(
+                select(User).where(User.auth0_sub == auth0_sub)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to create or retrieve user",
+                )
 
     return user
 

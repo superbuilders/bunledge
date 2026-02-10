@@ -1,23 +1,12 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routes import activities_router, users_router
-from .timeback import create_timeback_instance, create_timeback_router
+from .timeback import timeback
 
+app = FastAPI(title="Bunledge API")
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    timeback = await create_timeback_instance()
-    app.state.timeback = timeback
-    app.include_router(create_timeback_router(timeback), prefix="/api/timeback")
-
-    yield
-
-
-app = FastAPI(title="Bunledge API", lifespan=lifespan)
-
+app.include_router(timeback.router, prefix="/api/timeback")
 app.include_router(users_router)
 app.include_router(activities_router)
 
